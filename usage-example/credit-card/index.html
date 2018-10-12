@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Credit Card Example</title>
+</head>
+
+<body>
+    <div id="contents">
+        <h1>Credit Card Example</h1>
+        <p>This shows how you can use credit card payments. No actual payment will be made</p>
+        <p>Pay for Seve's Make School Tuition</p>
+        <p>Price: USD <strong>$70,000.00</strong></p>
+        <button onclick="buy()">Help The Children</button>
+    </div>
+    <pre id="msg"></pre>
+</body>
+<script type="text/javascript">
+    function buildPaymentRequest() {
+        if (!window.PaymentRequest) {
+            return null;
+        }
+
+        var supportedInstruments = [{
+            supportedMethods: [
+                'basic-card',
+            ]
+        }];
+
+        var details = {
+            total: {
+                label: 'Donation',
+                amount: {
+                    currency: 'USD',
+                    value: '70000.00'
+                }
+            },
+            displayItems: [{
+                label: 'Donation amount',
+                amount: {
+                    currency: 'USD',
+                    value: '700000.00'
+                }
+            }],
+            modifiers: [{
+                supportedMethods: ['basic-card'],
+                total: {
+                    label: 'Total Charge',
+                    amount: {
+                        currency: 'USD',
+                        value: '70666.00'
+                    }
+                },
+                additionalDisplayItems: [{
+                    label: 'Ticketmaster Fees',
+                    amount: {
+                        currency: 'USD',
+                        value: '666.00'
+                    }
+                }],
+                data: {
+                    supportedNetworks: ['visa'],
+                }
+            }]
+        };
+
+        var request = null;
+
+        try {
+            request = new PaymentRequest(supportedInstruments, details);
+            if (request.canMakePayment) {
+                request.canMakePayment().then((result) => {
+                    info(result ? "Can make payment" : "Cannot make payment");
+                }).catch(function(err) {
+                    error(err);
+                });
+            }
+        } catch (e) {
+            error('Developer mistake: \'' + e + '\'');
+        }
+
+        return request;
+    }
+
+    var request = buildPaymentRequest();
+
+
+    function buy() {
+        if (!window.PaymentRequest || !request) {
+            error('PaymentRequest API is not supported.');
+            return;
+        }
+
+        try {
+            request.show()
+                .then((instrumentResponse) => {
+                    window.setTimeout(() => {
+                        instrumentResponse.complete('success')
+                            .then(() => {
+                                done('This is a demo . No payment will be processed.', instrumentResponse);
+                            })
+                            .catch((err) => {
+                                error(err);
+                                request = buildPaymentRequest();
+                            });
+                    }, 2000);
+                })
+                .catch((err) => {
+                    error(err);
+                    request = buildPaymentRequest();
+                });
+        } catch (e) {
+            error('Developer mistake: \'' + e + '\'');
+            request = buildPaymentRequest();
+        }
+    }
+
+    function done(message, resp) {
+
+        if (resp.toJSON) {
+            info(JSON.stringify(resp, undefined, 2));
+            return;
+        }
+
+        let shippingOption = resp.shippingOption ?
+            'shipping, delivery, pickup option: ' + resp.shippingOption + '<br/>' :
+            '';
+
+        let shippingAddress = resp.shippingAddress ?
+            'shipping, delivery, pickup address: ' +
+            JSON.stringify(toDictionary(resp.shippingAddress), undefined, 2) +
+            '<br/>' :
+            '';
+
+        let instrument =
+            'instrument:' + JSON.stringify(resp.details, undefined, 2) + '<br/>';
+
+        let method = 'method: ' + resp.methodName + '<br/>';
+        let email = resp.payerEmail ? 'email: ' + resp.payerEmail + '<br/>' : '';
+        let phone = resp.payerPhone ? 'phone: ' + resp.payerPhone + '<br/>' : '';
+        let name = resp.payerName ? 'name: ' + resp.payerName + '<br/>' : '';
+
+
+        info(email + phone + name + shippingOption + shippingAddress + method +
+            instrument);
+    }
+
+    function info(msg) {
+        let element = document.createElement('pre');
+        element.innerHTML = msg;
+        element.className = 'info';
+        document.getElementById('msg').appendChild(element);
+    }
+
+    var timeoutID1;
+    var timeoutID2;
+
+    function error(msg) { // eslint-disable-line no-unused-vars
+        if (timeoutID1) {
+            window.clearTimeout(timeoutID1);
+        }
+        if (timeoutID2) {
+            window.clearTimeout(timeoutID2);
+        }
+        let element = document.createElement('pre');
+        element.innerHTML = msg;
+        element.className = 'error';
+        document.getElementById('msg').appendChild(element);
+        timeoutID1 = window.setTimeout(function() {
+            if (element.className !== 'error') {
+                return;
+            }
+            element.className = 'error-hide';
+            timeoutID2 = window.setTimeout(function() {
+                element.innerHTML = '';
+                element.className = '';
+            }, 500);
+        }, 10000);
+    }
+</script>
+
+</html>
